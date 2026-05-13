@@ -7,6 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 
+use crate::scripts;
+
 #[derive(Debug, Serialize, Clone)]
 pub struct DownloadProgress {
     pub game_id: String,
@@ -174,6 +176,12 @@ async fn do_download(
     }
 
     std::fs::remove_file(&temp_path).ok();
+
+    // Save scripts to disk so they are available when the server is unreachable
+    let all_scripts = scripts::fetch_scripts(game_id, server_url, token).await;
+    if !all_scripts.is_empty() {
+        scripts::save_scripts_to_disk(&all_scripts, &game_dir.to_string_lossy(), game_id);
+    }
 
     Ok(game_dir.to_string_lossy().to_string())
 }

@@ -1,8 +1,8 @@
 import js from "@eslint/js";
-import tseslint from "typescript-eslint";
-import importPlugin from "eslint-plugin-import-x";
 import prettierConfig from "eslint-config-prettier";
+import importPlugin from "eslint-plugin-import-x";
 import prettierPlugin from "eslint-plugin-prettier";
+import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   { ignores: ["dist/", "src-tauri/"] },
@@ -14,17 +14,20 @@ export default tseslint.config(
       prettier: prettierPlugin,
     },
     rules: {
-      "prettier/prettier": "error",
+      "prettier/prettier": [
+        "error",
+        {
+          plugins: ["prettier-plugin-tailwindcss"],
+          printWidth: 120,
+        },
+      ],
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-var-requires": "off",
       "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/no-empty-object-type": "off",
       "@typescript-eslint/array-type": "off",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "no-use-before-define": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
       "react/react-in-jsx-scope": "off",
@@ -55,6 +58,15 @@ export default tseslint.config(
         },
       ],
       "import-x/newline-after-import": "warn",
+      "max-len": [
+        "warn",
+        {
+          code: 120,
+          ignoreStrings: true,
+          ignoreTemplateLiterals: true,
+          ignoreUrls: true,
+        },
+      ],
     },
   },
   prettierConfig,

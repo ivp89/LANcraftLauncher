@@ -1,11 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import { exists } from "@tauri-apps/plugin-fs";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { create } from "zustand";
 
 const store = new LazyStore("settings.json");
 
-interface InstalledGame {
+export interface InstalledGame {
   installed: boolean;
   installPath: string;
   version?: string;
@@ -16,12 +15,14 @@ interface SettingsState {
   installDir: string;
   scriptDebugging: boolean;
   installedGames: Record<string, InstalledGame>;
+  localAlias: string;
   setServerUrl: (url: string) => Promise<void>;
   setInstallDir: (dir: string) => Promise<void>;
   setScriptDebugging: (v: boolean) => Promise<void>;
   setGameInstalled: (gameId: string, installPath: string, version?: string) => Promise<void>;
   removeGameInstalled: (gameId: string) => Promise<void>;
   getGameInstalled: (gameId: string) => InstalledGame | undefined;
+  setLocalAlias: (alias: string) => Promise<void>;
   loadFromStore: () => Promise<void>;
 }
 
@@ -38,6 +39,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   installDir: "",
   scriptDebugging: false,
   installedGames: {},
+  localAlias: "",
 
   setServerUrl: async (url: string) => {
     await store.set("serverUrl", url);
@@ -79,28 +81,32 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     return get().installedGames[gameId];
   },
 
+  setLocalAlias: async (alias: string) => {
+    await store.set("localAlias", alias);
+    await store.save();
+    set({ localAlias: alias });
+  },
+
   loadFromStore: async () => {
     const serverUrl = await store.get<string>("serverUrl").catch(() => null);
     const installDir = await store.get<string>("installDir").catch(() => null);
     const scriptDebugging = await store.get<boolean>("scriptDebugging").catch(() => null);
-    const installedGames =
-      (await store
-        .get<Record<string, InstalledGame>>("installedGames")
-        .catch(() => null)) ?? {};
+    const installedGames = (await store.get<Record<string, InstalledGame>>("installedGames").catch(() => null)) ?? {};
+    const localAlias = await store.get<string>("localAlias").catch(() => null);
 
     set({
       serverUrl: serverUrl ?? "",
-      installDir:
-        installDir ?? (await getDefaultInstallDir().catch(() => "/Games")),
+      installDir: installDir ?? (await getDefaultInstallDir().catch(() => "/Games")),
       scriptDebugging: scriptDebugging ?? false,
       installedGames,
+      localAlias: localAlias ?? "",
     });
 
     // Проверяем наличие папок отдельно, чтобы не блокировать загрузку
     const verified: Record<string, InstalledGame> = {};
     await Promise.all(
       Object.entries(installedGames).map(async ([id, info]) => {
-        const ok = await exists(info.installPath).catch(() => false);
+        const ok = await invoke<boolean>("path_exists", { path: info.installPath }).catch(() => false);
         if (ok) verified[id] = info;
       }),
     );

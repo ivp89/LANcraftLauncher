@@ -2,8 +2,18 @@ use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use tauri::Emitter;
 
 use crate::scripts;
+
+pub struct RunningGames(pub Arc<Mutex<HashMap<String, u32>>>);
+
+impl RunningGames {
+    pub fn new() -> Self {
+        Self(Arc::new(Mutex::new(HashMap::new())))
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GameAction {
@@ -94,12 +104,14 @@ struct ProfileResponse {
 
 #[tauri::command]
 pub async fn launch_game(
+    app: tauri::AppHandle,
     game_id: String,
     action: GameAction,
     install_path: String,
     server_url: String,
     token: String,
     debug: bool,
+    running_games: tauri::State<'_, RunningGames>,
 ) -> Result<(), String> {
     // Fetch alias from server (best-effort)
     let player_alias = {
@@ -115,8 +127,8 @@ pub async fn launch_game(
             Ok(r) => r.json::<ProfileResponse>().await
                 .ok()
                 .and_then(|p| p.alias.or(p.user_name))
-                .unwrap_or_default(),
-            Err(_) => String::new(),
+                .unwrap_or_else(|| scripts::read_player_alias(&install_path, &game_id)),
+            Err(_) => scripts::read_player_alias(&install_path, &game_id),
         }
     };
 
@@ -182,12 +194,22 @@ pub async fn launch_game(
         }
     }
 
-    let all_scripts = scripts::fetch_scripts(&game_id, &server_url, &token).await;
-    info!("  fetched {} scripts", all_scripts.len());
+    let all_scripts = {
+        let fetched = scripts::fetch_scripts(&game_id, &server_url, &token).await;
+        if fetched.is_empty() {
+            [7i32, 8i32]
+                .iter()
+                .filter_map(|&t| scripts::load_script_from_disk(&install_path, &game_id, t))
+                .collect()
+        } else {
+            fetched
+        }
+    };
+    info!("  {} scripts ready (BeforeStart/AfterStop)", all_scripts.len());
 
     // BeforeStart — блокирует запуск если падает
     info!("  running BeforeStart scripts");
-    scripts::run_scripts_of_type(&all_scripts, 7, &install_path, &server_url, debug).await?;
+    scripts::run_scripts_of_type(&all_scripts, 7, &install_path, &server_url, &player_alias, &player_alias, debug).await?;
 
     notify_server(&server_url, &token, &game_id, "Start").await;
 
@@ -198,19 +220,53 @@ pub async fn launch_game(
     })?;
     info!("  process spawned successfully");
 
+    // Track running process by PID so we can kill it on demand
+    let pid = child.id().unwrap_or(0);
+    if pid != 0 {
+        running_games.0.lock().unwrap().insert(game_id.clone(), pid);
+    }
+    let games_arc = Arc::clone(&running_games.0);
+
     let server_url = server_url.clone();
     let token = token.clone();
-    let game_id = game_id.clone();
+    let game_id_clone = game_id.clone();
     let install_path = install_path.clone();
     tokio::spawn(async move {
         let status = child.wait().await;
         info!("game process exited: {:?}", status);
-        if let Err(e) = scripts::run_scripts_of_type(&all_scripts, 8, &install_path, &server_url, debug).await {
+        games_arc.lock().unwrap().remove(&game_id_clone);
+        let _ = app.emit("game-exited", &game_id_clone);
+        info!("  running AfterStop scripts");
+        if let Err(e) = scripts::run_scripts_of_type(&all_scripts, 8, &install_path, &server_url, &player_alias, &player_alias, debug).await {
             warn!("AfterStop script error (non-fatal): {e}");
         }
-        notify_server(&server_url, &token, &game_id, "End").await;
+        notify_server(&server_url, &token, &game_id_clone, "End").await;
     });
 
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_game(
+    game_id: String,
+    running_games: tauri::State<'_, RunningGames>,
+) -> Result<(), String> {
+    let pid = running_games.0.lock().unwrap().get(&game_id).copied();
+    if let Some(pid) = pid {
+        info!("stop_game: killing pid {pid} for game {game_id}");
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("taskkill")
+                .args(["/PID", &pid.to_string(), "/F"])
+                .spawn();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = std::process::Command::new("kill")
+                .args(["-TERM", &pid.to_string()])
+                .spawn();
+        }
+    }
     Ok(())
 }
 

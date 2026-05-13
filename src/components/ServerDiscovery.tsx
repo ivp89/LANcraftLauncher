@@ -1,4 +1,5 @@
 import { useState } from "react";
+import clsx from "clsx";
 import { invoke } from "@tauri-apps/api/core";
 
 interface ServerInfo {
@@ -42,7 +43,12 @@ export default function ServerDiscovery({ onSelect, currentUrl }: Props) {
           type="button"
           onClick={scan}
           disabled={scanning}
-          className="px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white"
+          className={clsx(
+            'px-3 py-1.5 text-sm rounded',
+            'bg-blue-600 hover:bg-blue-500',
+            'disabled:opacity-50',
+            'text-white'
+          )}
         >
           {scanning ? "Сканирование…" : "Найти сервер"}
         </button>
@@ -58,7 +64,11 @@ export default function ServerDiscovery({ onSelect, currentUrl }: Props) {
                 setManualUrl(s.address);
                 onSelect(s.address);
               }}
-              className="w-full text-left px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-sm"
+              className={clsx(
+                'w-full text-left px-3 py-2 rounded',
+                'bg-slate-700 hover:bg-slate-600',
+                'text-sm'
+              )}
             >
               <span className="font-medium">{s.name}</span>
               <span className="text-slate-400 ml-2">{s.address}</span>
@@ -79,11 +89,20 @@ export default function ServerDiscovery({ onSelect, currentUrl }: Props) {
             value={manualUrl}
             onChange={(e) => setManualUrl(e.target.value)}
             placeholder="http://192.168.1.100:1337"
-            className="flex-1 px-3 py-1.5 text-sm rounded bg-slate-700 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className={clsx(
+              'flex-1 px-3 py-1.5 text-sm rounded',
+              'bg-slate-700 border border-slate-600',
+              'text-white placeholder-slate-500',
+              'focus:outline-none focus:border-blue-500'
+            )}
           />
           <button
             type="submit"
-            className="px-3 py-1.5 text-sm rounded bg-slate-600 hover:bg-slate-500 text-white"
+            className={clsx(
+              'px-3 py-1.5 text-sm rounded',
+              'bg-slate-600 hover:bg-slate-500',
+              'text-white'
+            )}
           >
             OK
           </button>

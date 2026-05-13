@@ -30,15 +30,12 @@ export async function fetchAvatarBlob(): Promise<string | null> {
   const token = useAuthStore.getState().token;
   if (!token) return null;
 
-  const res = await fetch(
-    `${serverUrl.replace(/\/$/, "")}/api/Profile/Avatar`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "X-API-Version": "1.0.0",
-      },
+  const res = await fetch(`${serverUrl.replace(/\/$/, "")}/api/Profile/Avatar`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-API-Version": "1.0.0",
     },
-  );
+  });
 
   if (!res.ok) return null;
 

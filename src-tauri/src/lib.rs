@@ -1,11 +1,10 @@
-use tauri::Manager;
+use tauri::Manager as _;
 
 mod discovery;
 mod install;
 mod launcher;
 mod saves;
 mod scripts;
-mod validate;
 
 #[tauri::command]
 fn open_dir(path: String) -> Result<(), String> {
@@ -35,6 +34,16 @@ fn get_home_dir() -> Result<String, String> {
     dirs::home_dir()
         .map(|p| p.to_string_lossy().to_string())
         .ok_or_else(|| "Cannot determine home directory".to_string())
+}
+
+#[tauri::command]
+fn path_exists(path: String) -> bool {
+    std::path::Path::new(&path).exists()
+}
+
+#[tauri::command]
+fn remove_dir(path: String) -> Result<(), String> {
+    std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -69,19 +78,22 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .manage(install::DownloadCancellations(Default::default()))
+        .manage(launcher::RunningGames::new())
         .invoke_handler(tauri::generate_handler![
             discovery::discover_servers,
             install::download_and_install_game,
             install::cancel_download,
             launcher::launch_game,
+            launcher::stop_game,
             saves::download_save,
             saves::upload_save,
-            validate::validate_files,
             scripts::run_game_scripts,
             open_dir,
             get_home_dir,
             get_default_install_dir,
             get_log_path,
+            path_exists,
+            remove_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

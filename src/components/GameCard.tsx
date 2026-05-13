@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import clsx from "clsx";
 
 import { thumbnailUrl } from "../api/client";
 import { MediaType } from "../api/types";
 import type { Game } from "../api/types";
 import { useGame } from "../hooks/useGames";
+import { useGameStateStore } from "../stores/gameStateStore";
 import { useSettingsStore } from "../stores/settingsStore";
 
 interface Props {
@@ -14,6 +16,7 @@ interface Props {
 export default function GameCard({ game }: Props) {
   const navigate = useNavigate();
   const { getGameInstalled } = useSettingsStore();
+  const { downloadingGames } = useGameStateStore();
   const [imgError, setImgError] = useState(false);
 
   const needsMedia = !game.media || game.media.length === 0;
@@ -23,12 +26,18 @@ export default function GameCard({ game }: Props) {
     (m) => m.type === MediaType.Cover,
   );
   const installed = getGameInstalled(game.id);
+  const downloading = downloadingGames.has(game.id);
 
   return (
     <button
       onClick={() => navigate(`/game/${game.id}`)}
       title={game.title}
-      className="group relative rounded-lg overflow-hidden bg-slate-800 hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer text-left"
+      className={clsx(
+        'group relative rounded-lg overflow-hidden',
+        'bg-slate-800',
+        'hover:ring-2 hover:ring-blue-500',
+        'transition-all cursor-pointer text-left'
+      )}
     >
       <div className="aspect-[2/3] relative bg-slate-700">
         {cover && !imgError ? (
@@ -45,6 +54,9 @@ export default function GameCard({ game }: Props) {
         )}
         {installed?.installed && (
           <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-green-400 rounded-full" />
+        )}
+        {downloading && (
+          <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-blue-400 rounded-full animate-pulse" />
         )}
       </div>
 

@@ -1,3 +1,4 @@
+import { refreshToken } from "./auth";
 import { useAuthStore } from "../stores/authStore";
 import { useSettingsStore } from "../stores/settingsStore";
 
@@ -12,10 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+export async function apiFetch<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const { token, serverUrl } = getStoreState();
 
   const headers: Record<string, string> = {
@@ -31,6 +29,25 @@ export async function apiFetch<T>(
   const url = `${serverUrl.replace(/\/$/, "")}${path}`;
   const response = await fetch(url, { ...options, headers });
 
+  if (response.status === 401 && !isRetry) {
+    const auth = useAuthStore.getState();
+    if (auth.refreshToken && auth.expiration) {
+      try {
+        const newToken = await refreshToken(serverUrl, {
+          accessToken: auth.token ?? "",
+          refreshToken: auth.refreshToken,
+          expiration: auth.expiration,
+        });
+        await auth.setAuth(newToken);
+        return apiFetch<T>(path, options, true);
+      } catch {
+        await auth.clearAuth();
+      }
+    } else {
+      await auth.clearAuth();
+    }
+  }
+
   if (!response.ok) {
     let message = `HTTP ${response.status}`;
     try {
@@ -40,10 +57,7 @@ export async function apiFetch<T>(
     throw new ApiError(response.status, message);
   }
 
-  if (
-    response.status === 204 ||
-    response.headers.get("content-length") === "0"
-  ) {
+  if (response.status === 204 || response.headers.get("content-length") === "0") {
     return undefined as T;
   }
 
@@ -59,11 +73,7 @@ function getStoreState() {
   };
 }
 
-export function mediaUrl(
-  mediaId: string,
-  fileId: string,
-  serverUrl?: string,
-): string {
+export function mediaUrl(mediaId: string, fileId: string, serverUrl?: string): string {
   const url = serverUrl ?? useSettingsStore.getState().serverUrl;
   return `${url.replace(/\/$/, "")}/api/Media/${mediaId}/Download?fileId=${fileId}`;
 }

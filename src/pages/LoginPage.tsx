@@ -1,4 +1,5 @@
 import { useState } from "react";
+import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 
 import { login, register } from "../api/auth";
@@ -41,9 +42,7 @@ export default function LoginPage() {
     setError("");
     try {
       const token =
-        mode === "login"
-          ? await login(serverUrl, username, password)
-          : await register(serverUrl, username, password);
+        mode === "login" ? await login(serverUrl, username, password) : await register(serverUrl, username, password);
       await setAuth(token);
       navigate("/");
     } catch (err) {
@@ -54,47 +53,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[hsl(222,47%,11%)]">
+    <div className="flex min-h-screen items-center justify-center bg-[hsl(222,47%,11%)]">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white">LANCRAFT</h1>
-          <p className="text-slate-400 mt-1">Game Launcher</p>
+          <p className="mt-1 text-slate-400">Game Launcher</p>
         </div>
 
-        <div className="bg-[hsl(222,47%,15%)] rounded-xl p-6 space-y-5 border border-[hsl(216,34%,25%)]">
+        <div className="space-y-5 rounded-xl border border-[hsl(216,34%,25%)] bg-[hsl(222,47%,15%)] p-6">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Сервер
-            </label>
-            <ServerDiscovery
-              onSelect={(url) => setServerUrl(url)}
-              currentUrl={serverUrl}
-            />
+            <label className="mb-2 block text-sm font-medium text-slate-300">Сервер</label>
+            <ServerDiscovery onSelect={(url) => setServerUrl(url)} currentUrl={serverUrl} />
           </div>
 
           {serverUrl && (
             <>
               {/* Mode tabs */}
-              <div className="flex rounded-lg overflow-hidden border border-[hsl(216,34%,30%)]">
+              <div className="flex overflow-hidden rounded-lg border border-[hsl(216,34%,30%)]">
                 <button
                   type="button"
                   onClick={() => switchMode("login")}
-                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                    mode === "login"
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-400 hover:text-white"
-                  }`}
+                  className={clsx(
+                    "flex-1 py-2 text-sm font-medium transition-colors",
+                    mode === "login" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white",
+                  )}
                 >
                   Войти
                 </button>
                 <button
                   type="button"
                   onClick={() => switchMode("register")}
-                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                    mode === "register"
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-400 hover:text-white"
-                  }`}
+                  className={clsx(
+                    "flex-1 py-2 text-sm font-medium transition-colors",
+                    mode === "register" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white",
+                  )}
                 >
                   Регистрация
                 </button>
@@ -102,57 +94,68 @@ export default function LoginPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
-                    Имя пользователя
-                  </label>
+                  <label className="mb-1 block text-sm font-medium text-slate-300">Имя пользователя</label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     autoComplete="username"
-                    className="w-full px-3 py-2 rounded-lg bg-[hsl(216,34%,20%)] border border-[hsl(216,34%,30%)] text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    className={clsx(
+                      "w-full rounded-lg border",
+                      "border-[hsl(216,34%,30%)] bg-[hsl(216,34%,20%)]",
+                      "px-3 py-2 text-white placeholder-slate-500",
+                      "focus:border-blue-500 focus:outline-none",
+                    )}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
-                    Пароль
-                  </label>
+                  <label className="mb-1 block text-sm font-medium text-slate-300">Пароль</label>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    autoComplete={
-                      mode === "login" ? "current-password" : "new-password"
-                    }
-                    className="w-full px-3 py-2 rounded-lg bg-[hsl(216,34%,20%)] border border-[hsl(216,34%,30%)] text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    className={clsx(
+                      "w-full rounded-lg border",
+                      "border-[hsl(216,34%,30%)] bg-[hsl(216,34%,20%)]",
+                      "px-3 py-2 text-white placeholder-slate-500",
+                      "focus:border-blue-500 focus:outline-none",
+                    )}
                   />
                 </div>
 
                 {mode === "register" && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Подтверждение пароля
-                    </label>
+                    <label className="mb-1 block text-sm font-medium text-slate-300">Подтверждение пароля</label>
                     <input
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                       autoComplete="new-password"
-                      className="w-full px-3 py-2 rounded-lg bg-[hsl(216,34%,20%)] border border-[hsl(216,34%,30%)] text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                      className={clsx(
+                        "w-full rounded-lg border",
+                        "border-[hsl(216,34%,30%)] bg-[hsl(216,34%,20%)]",
+                        "px-3 py-2 text-white placeholder-slate-500",
+                        "focus:border-blue-500 focus:outline-none",
+                      )}
                     />
                   </div>
                 )}
 
-                {error && <p className="text-red-400 text-sm">{error}</p>}
+                {error && <p className="text-sm text-red-400">{error}</p>}
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors"
+                  className={clsx(
+                    "w-full rounded-lg py-2 font-medium",
+                    "bg-blue-600 text-white hover:bg-blue-500",
+                    "transition-colors disabled:opacity-50",
+                  )}
                 >
                   {loading
                     ? mode === "login"
