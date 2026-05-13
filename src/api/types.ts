@@ -47,6 +47,21 @@ export interface Tag {
   name: string;
 }
 
+export interface Collection {
+  id: string;
+  name: string;
+}
+
+export interface DepotGame {
+  id: string;
+  collections: Collection[] | null;
+}
+
+export interface DepotResult {
+  games: DepotGame[] | null;
+  collections: Collection[] | null;
+}
+
 export interface Company {
   id: string;
   name: string;
@@ -69,10 +84,12 @@ export interface Archive {
 export interface GameAction {
   id: string;
   name: string;
-  executable: string;
+  path: string;
   arguments?: string;
   workingDirectory?: string;
-  primaryAction: boolean;
+  isPrimaryAction: boolean;
+  sortOrder: number;
+  variables?: Record<string, string>;
 }
 
 export interface MultiplayerMode {
@@ -110,6 +127,7 @@ export interface Game {
   media: Media[] | null;
   genres: Genre[] | null;
   tags: Tag[] | null;
+  collections: Collection[] | null;
   developers: Company[] | null;
   publishers: Company[] | null;
   platforms: Platform[] | null;

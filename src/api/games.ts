@@ -1,5 +1,9 @@
 import { apiFetch } from "./client";
-import type { Game, GameAction, EntityReference } from "./types";
+import type { DepotResult, Game, GameAction, EntityReference } from "./types";
+
+export async function getDepot(): Promise<DepotResult> {
+  return apiFetch<DepotResult>("/api/Depot");
+}
 
 export async function getLibrary(): Promise<EntityReference[]> {
   return apiFetch<EntityReference[]>("/api/Library");

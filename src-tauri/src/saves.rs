@@ -16,15 +16,62 @@ pub struct SavePath {
     pub is_regex: bool,
 }
 
+fn expand_path(s: &str, install_path: &str) -> PathBuf {
+    let mut result = s.to_string();
+
+    result = result.replace("{InstallDir}", install_path);
+    result = result.replace("{InstallDirectory}", install_path);
+
+    // %ENV_VAR% expansion
+    let mut expanded = String::with_capacity(result.len());
+    let mut chars = result.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            let mut name = String::new();
+            let mut closed = false;
+            for inner in chars.by_ref() {
+                if inner == '%' { closed = true; break; }
+                name.push(inner);
+            }
+            if closed && !name.is_empty() {
+                if let Ok(val) = std::env::var(&name) {
+                    expanded.push_str(&val);
+                } else {
+                    expanded.push('%');
+                    expanded.push_str(&name);
+                    expanded.push('%');
+                }
+            } else {
+                expanded.push('%');
+                expanded.push_str(&name);
+            }
+        } else {
+            expanded.push(c);
+        }
+    }
+    result = expanded;
+
+    result = result.replace('\\', std::path::MAIN_SEPARATOR_STR);
+    result = result.replace('/', std::path::MAIN_SEPARATOR_STR);
+
+    PathBuf::from(result)
+}
+
 fn resolve_save_dir(save_path: &SavePath, install_path: &str) -> PathBuf {
+    let path = expand_path(&save_path.path, install_path);
+
+    if path.is_absolute() {
+        return path;
+    }
+
     let base = save_path
         .working_directory
         .as_deref()
         .filter(|d| !d.is_empty())
-        .map(|d| PathBuf::from(d.replace("{InstallDir}", install_path)))
+        .map(|d| expand_path(d, install_path))
         .unwrap_or_else(|| PathBuf::from(install_path));
 
-    base.join(save_path.path.replace("{InstallDir}", install_path))
+    base.join(path)
 }
 
 fn collect_files(dir: &PathBuf) -> std::io::Result<Vec<PathBuf>> {

@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import GameDetailPage from "./pages/GameDetailPage";
 import LibraryPage from "./pages/LibraryPage";
 import LoginPage from "./pages/LoginPage";
-import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
 import { useAuthStore } from "./stores/authStore";
 import { useSettingsStore } from "./stores/settingsStore";
 
@@ -45,10 +45,10 @@ export default function App() {
         }
       />
       <Route
-        path="/profile"
+        path="/settings"
         element={
           <ProtectedRoute>
-            <ProfilePage />
+            <SettingsPage />
           </ProtectedRoute>
         }
       />

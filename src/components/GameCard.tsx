@@ -27,6 +27,7 @@ export default function GameCard({ game }: Props) {
   return (
     <button
       onClick={() => navigate(`/game/${game.id}`)}
+      title={game.title}
       className="group relative rounded-lg overflow-hidden bg-slate-800 hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer text-left"
     >
       <div className="aspect-[2/3] relative bg-slate-700">

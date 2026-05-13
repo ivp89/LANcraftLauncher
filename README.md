@@ -1,4 +1,4 @@
-# LANcraft Launcher
+# LANCRAFT Launcher
 
 Кастомный лаунчер для LANCommander на базе Tauri v2 + React + TypeScript.
 

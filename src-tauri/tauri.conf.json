@@ -1,5 +1,5 @@
 {
-  "productName": "LANcraft Launcher",
+  "productName": "LANCRAFT Launcher",
   "version": "0.1.0",
   "identifier": "com.lancraft.launcher",
   "build": {
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "LANcraft Launcher",
+        "title": "LANCRAFT Launcher",
         "width": 1280,
         "height": 800,
         "minWidth": 900,

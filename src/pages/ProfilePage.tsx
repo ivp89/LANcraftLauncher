@@ -58,7 +58,7 @@ export default function ProfilePage() {
       await changeAlias(alias.trim());
       setProfile((p) => (p ? { ...p, alias: alias.trim() } : p));
 
-      const { installedGames, serverUrl: url } = useSettingsStore.getState();
+      const { installedGames, serverUrl: url, scriptDebugging } = useSettingsStore.getState();
       const { token: tok } = useAuthStore.getState();
       const entries = Object.entries(installedGames).filter(
         ([, g]) => g.installed,
@@ -72,6 +72,7 @@ export default function ProfilePage() {
               serverUrl: url,
               token: tok,
               installPath: g.installPath,
+              debug: scriptDebugging,
             }),
           ),
         );

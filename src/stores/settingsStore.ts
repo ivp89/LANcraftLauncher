@@ -14,9 +14,11 @@ interface InstalledGame {
 interface SettingsState {
   serverUrl: string;
   installDir: string;
+  scriptDebugging: boolean;
   installedGames: Record<string, InstalledGame>;
   setServerUrl: (url: string) => Promise<void>;
   setInstallDir: (dir: string) => Promise<void>;
+  setScriptDebugging: (v: boolean) => Promise<void>;
   setGameInstalled: (gameId: string, installPath: string, version?: string) => Promise<void>;
   removeGameInstalled: (gameId: string) => Promise<void>;
   getGameInstalled: (gameId: string) => InstalledGame | undefined;
@@ -25,17 +27,16 @@ interface SettingsState {
 
 async function getDefaultInstallDir(): Promise<string> {
   try {
-    const home = await invoke<string>("get_home_dir");
-    const sep = home.endsWith("/") || home.endsWith("\\") ? "" : "/";
-    return `${home}${sep}Games`;
+    return await invoke<string>("get_default_install_dir");
   } catch {
-    return navigator.platform.startsWith("Win") ? "C:\\Games" : "/tmp/Games";
+    return navigator.platform.startsWith("Win") ? "C:\\Games" : "/Games";
   }
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   serverUrl: "",
   installDir: "",
+  scriptDebugging: false,
   installedGames: {},
 
   setServerUrl: async (url: string) => {
@@ -48,6 +49,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await store.set("installDir", dir);
     await store.save();
     set({ installDir: dir });
+  },
+
+  setScriptDebugging: async (v: boolean) => {
+    await store.set("scriptDebugging", v);
+    await store.save();
+    set({ scriptDebugging: v });
   },
 
   removeGameInstalled: async (gameId: string) => {
@@ -75,6 +82,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   loadFromStore: async () => {
     const serverUrl = await store.get<string>("serverUrl").catch(() => null);
     const installDir = await store.get<string>("installDir").catch(() => null);
+    const scriptDebugging = await store.get<boolean>("scriptDebugging").catch(() => null);
     const installedGames =
       (await store
         .get<Record<string, InstalledGame>>("installedGames")
@@ -84,6 +92,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       serverUrl: serverUrl ?? "",
       installDir:
         installDir ?? (await getDefaultInstallDir().catch(() => "/Games")),
+      scriptDebugging: scriptDebugging ?? false,
       installedGames,
     });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { remove } from "@tauri-apps/plugin-fs";
 import { useParams, useNavigate } from "react-router-dom";
@@ -19,6 +19,7 @@ export default function GameDetailPage() {
   const {
     serverUrl,
     installDir,
+    scriptDebugging,
     getGameInstalled,
     setGameInstalled,
     removeGameInstalled,
@@ -55,6 +56,7 @@ export default function GameDetailPage() {
     try {
       const installPath = await invoke<string>("download_and_install_game", {
         gameId: game.id,
+        gameTitle: game.title,
         serverUrl,
         token,
         installDir,
@@ -71,6 +73,7 @@ export default function GameDetailPage() {
             serverUrl,
             token,
             installPath,
+            debug: scriptDebugging,
           });
         } catch (e: unknown) {
           setActionError(e instanceof Error ? e.message : String(e));
@@ -81,10 +84,16 @@ export default function GameDetailPage() {
       setInstallSuccess(true);
     } catch (e) {
       setShowDownload(false);
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg !== "cancelled") setActionError(msg);
     } finally {
       setInstalling(false);
     }
+  }
+
+  function handleCancelInstall() {
+    if (!game) return;
+    invoke("cancel_download", { gameId: game.id }).catch(() => {});
   }
 
   async function handleUninstall() {
@@ -99,6 +108,7 @@ export default function GameDetailPage() {
         serverUrl,
         token,
         installPath: installed.installPath,
+        debug: scriptDebugging,
       }).catch(() => {});
       await remove(installed.installPath, { recursive: true });
       await removeGameInstalled(game!.id);
@@ -184,13 +194,15 @@ export default function GameDetailPage() {
       await invoke("launch_game", {
         gameId: game.id,
         action: {
-          executable: action.executable,
+          executable: action.path,
           arguments: action.arguments,
           working_dir: action.workingDirectory,
+          variables: action.variables ?? {},
         },
         installPath: installed.installPath,
         serverUrl,
         token,
+        debug: scriptDebugging,
       });
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
@@ -200,7 +212,7 @@ export default function GameDetailPage() {
   }
 
   const actions = game?.actions ?? [];
-  const primaryAction = actions.find((a) => a.primaryAction) ?? actions[0];
+  const primaryAction = actions.find((a) => a.isPrimaryAction) ?? actions[0];
 
   const media = game?.media ?? [];
   const cover = media.find((m) => m.type === MediaType.Cover);
@@ -209,6 +221,19 @@ export default function GameDetailPage() {
   const screenshots = media.filter((m) => m.type === MediaType.Screenshot);
   const heroMedia = background ?? screenshots[0] ?? cover;
   const [activeScreenshot, setActiveScreenshot] = useState<string | null>(null);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showActionsMenu) return;
+    function onClickOutside(e: MouseEvent) {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [showActionsMenu]);
 
   if (isLoading) {
     return (
@@ -312,13 +337,44 @@ export default function GameDetailPage() {
             {installed?.installed ? (
               <>
                 {primaryAction && (
-                  <button
-                    onClick={() => handleLaunch(primaryAction)}
-                    disabled={launching}
-                    className="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold"
-                  >
-                    {launching ? "Запуск…" : "▶ Играть"}
-                  </button>
+                  <div ref={actionsMenuRef} className="relative">
+                    <div className="flex">
+                      <button
+                        onClick={() => handleLaunch(primaryAction)}
+                        disabled={launching}
+                        className={`px-6 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-semibold transition-colors ${actions.length > 1 ? "rounded-l-lg" : "rounded-lg"}`}
+                      >
+                        {launching ? "Запуск…" : "▶ Играть"}
+                      </button>
+                      {actions.length > 1 && (
+                        <button
+                          onClick={() => setShowActionsMenu((v) => !v)}
+                          disabled={launching}
+                          className="px-2 py-2 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white rounded-r-lg border-l border-green-800 transition-colors"
+                          title="Другие действия"
+                        >
+                          ▾
+                        </button>
+                      )}
+                    </div>
+                    {showActionsMenu && (
+                      <div className="absolute right-0 top-full mt-1 z-20 min-w-[160px] bg-[hsl(222,47%,18%)] border border-[hsl(216,34%,28%)] rounded-lg shadow-xl overflow-hidden">
+                        {actions
+                          .filter((a) => !a.isPrimaryAction)
+                          .sort((a, b) => a.sortOrder - b.sortOrder)
+                          .map((action) => (
+                            <button
+                              key={action.id}
+                              onClick={() => { setShowActionsMenu(false); handleLaunch(action); }}
+                              disabled={launching}
+                              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-[hsl(216,34%,25%)] disabled:opacity-50 transition-colors"
+                            >
+                              {action.name}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 )}
                 <div className="flex gap-1">
                   <button
@@ -368,22 +424,6 @@ export default function GameDetailPage() {
                     </button>
                   </div>
                 )}
-                {actions.length > 1 && (
-                  <div className="flex flex-col gap-1">
-                    {actions
-                      .filter((a) => !a.primaryAction)
-                      .map((action) => (
-                        <button
-                          key={action.id}
-                          onClick={() => handleLaunch(action)}
-                          disabled={launching}
-                          className="px-4 py-1.5 text-sm rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-50 text-white"
-                        >
-                          {action.name}
-                        </button>
-                      ))}
-                  </div>
-                )}
               </>
             ) : (
               <button
@@ -408,8 +448,14 @@ export default function GameDetailPage() {
 
         {/* Download progress / install status */}
         {showDownload && id && (
-          <div className="mb-4">
+          <div className="mb-4 space-y-2">
             <DownloadProgress gameId={id} />
+            <button
+              onClick={handleCancelInstall}
+              className="text-sm text-slate-400 hover:text-red-400 transition-colors"
+            >
+              Отменить
+            </button>
           </div>
         )}
         {installSuccess && !showDownload && (
