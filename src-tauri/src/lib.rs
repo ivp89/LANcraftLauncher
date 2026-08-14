@@ -3,8 +3,8 @@ use tauri::Manager as _;
 mod discovery;
 mod install;
 mod launcher;
+mod media_cache;
 mod saves;
-mod scripts;
 
 #[tauri::command]
 fn open_dir(path: String) -> Result<(), String> {
@@ -75,7 +75,6 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .manage(install::DownloadCancellations(Default::default()))
         .manage(launcher::RunningGames::new())
@@ -87,7 +86,7 @@ pub fn run() {
             launcher::stop_game,
             saves::download_save,
             saves::upload_save,
-            scripts::run_game_scripts,
+            media_cache::get_cached_media,
             open_dir,
             get_home_dir,
             get_default_install_dir,

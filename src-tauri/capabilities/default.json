@@ -10,7 +10,6 @@
     "store:allow-save",
     "store:allow-load",
     "store:allow-delete",
-    "shell:allow-open",
     "fs:allow-read-dir",
     "fs:allow-read-file",
     "fs:allow-write-file",

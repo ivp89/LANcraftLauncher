@@ -1,11 +1,9 @@
-use log::{error, info, warn};
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
-
-use crate::scripts;
 
 pub struct RunningGames(pub Arc<Mutex<HashMap<String, u32>>>);
 
@@ -110,7 +108,6 @@ pub async fn launch_game(
     install_path: String,
     server_url: String,
     token: String,
-    debug: bool,
     running_games: tauri::State<'_, RunningGames>,
 ) -> Result<(), String> {
     // Fetch alias from server (best-effort)
@@ -127,8 +124,8 @@ pub async fn launch_game(
             Ok(r) => r.json::<ProfileResponse>().await
                 .ok()
                 .and_then(|p| p.alias.or(p.user_name))
-                .unwrap_or_else(|| scripts::read_player_alias(&install_path, &game_id)),
-            Err(_) => scripts::read_player_alias(&install_path, &game_id),
+                .unwrap_or_default(),
+            Err(_) => String::new(),
         }
     };
 
@@ -194,23 +191,6 @@ pub async fn launch_game(
         }
     }
 
-    let all_scripts = {
-        let fetched = scripts::fetch_scripts(&game_id, &server_url, &token).await;
-        if fetched.is_empty() {
-            [7i32, 8i32]
-                .iter()
-                .filter_map(|&t| scripts::load_script_from_disk(&install_path, &game_id, t))
-                .collect()
-        } else {
-            fetched
-        }
-    };
-    info!("  {} scripts ready (BeforeStart/AfterStop)", all_scripts.len());
-
-    // BeforeStart — блокирует запуск если падает
-    info!("  running BeforeStart scripts");
-    scripts::run_scripts_of_type(&all_scripts, 7, &install_path, &server_url, &player_alias, &player_alias, debug).await?;
-
     notify_server(&server_url, &token, &game_id, "Start").await;
 
     let mut child = cmd.spawn().map_err(|e| {
@@ -230,16 +210,11 @@ pub async fn launch_game(
     let server_url = server_url.clone();
     let token = token.clone();
     let game_id_clone = game_id.clone();
-    let install_path = install_path.clone();
     tokio::spawn(async move {
         let status = child.wait().await;
         info!("game process exited: {:?}", status);
         games_arc.lock().unwrap().remove(&game_id_clone);
         let _ = app.emit("game-exited", &game_id_clone);
-        info!("  running AfterStop scripts");
-        if let Err(e) = scripts::run_scripts_of_type(&all_scripts, 8, &install_path, &server_url, &player_alias, &player_alias, debug).await {
-            warn!("AfterStop script error (non-fatal): {e}");
-        }
         notify_server(&server_url, &token, &game_id_clone, "End").await;
     });
 

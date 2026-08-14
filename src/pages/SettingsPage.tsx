@@ -6,15 +6,12 @@ import { useNavigate } from "react-router-dom";
 
 import { changeAlias, fetchAvatarBlob } from "../api/profile";
 import { useProfile } from "../hooks/useGames";
-import { useAuthStore } from "../stores/authStore";
 import { useConnectivityStore } from "../stores/connectivityStore";
 import { useSettingsStore } from "../stores/settingsStore";
 
-const SCRIPT_TYPE_NAME_CHANGE = 2;
-
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { serverUrl, installDir, scriptDebugging, localAlias, setInstallDir, setScriptDebugging } = useSettingsStore();
+  const { serverUrl, installDir, localAlias, setInstallDir } = useSettingsStore();
   const isOnline = useConnectivityStore((s) => s.isOnline);
   const [logPath, setLogPath] = useState<string | null>(null);
   const [dirInput, setDirInput] = useState(installDir);
@@ -76,25 +73,8 @@ export default function SettingsPage() {
         queryClient.invalidateQueries({ queryKey: ["profile"] });
       }
 
-      const { installedGames, serverUrl: sv, scriptDebugging: dbg, setLocalAlias } = useSettingsStore.getState();
-      const { token } = useAuthStore.getState();
+      const { setLocalAlias } = useSettingsStore.getState();
       await setLocalAlias(newAlias);
-      const entries = Object.entries(installedGames).filter(([, g]) => g.installed);
-      if (entries.length > 0 && token) {
-        await Promise.allSettled(
-          entries.map(([gameId, g]) =>
-            invoke("run_game_scripts", {
-              gameId,
-              scriptType: SCRIPT_TYPE_NAME_CHANGE,
-              serverUrl: sv,
-              token,
-              installPath: g.installPath,
-              newPlayerAlias: newAlias,
-              debug: dbg,
-            }),
-          ),
-        );
-      }
       setAliasSuccess(true);
       setTimeout(() => setAliasSuccess(false), 3000);
     } catch (err) {
@@ -240,39 +220,6 @@ export default function SettingsPage() {
               </button>
             </div>
           )}
-
-          {/* Script debugging */}
-          <div className="rounded-xl border border-[hsl(216,34%,25%)] bg-[hsl(222,47%,15%)] p-5">
-            <label className="flex cursor-pointer items-start gap-4">
-              <div className="relative mt-0.5">
-                <input
-                  type="checkbox"
-                  checked={scriptDebugging}
-                  onChange={(e) => setScriptDebugging(e.target.checked)}
-                  className="sr-only"
-                />
-                <div
-                  className={clsx(
-                    "h-6 w-10 rounded-full transition-colors",
-                    scriptDebugging ? "bg-blue-600" : "bg-slate-600",
-                  )}
-                />
-                <div
-                  className={clsx(
-                    "absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform",
-                    scriptDebugging ? "translate-x-5" : "translate-x-1",
-                  )}
-                />
-              </div>
-              <div>
-                <p className="font-medium text-white">Отладка скриптов</p>
-                <p className="mt-0.5 text-sm text-slate-400">
-                  На Windows показывает окно PowerShell при выполнении скриптов. На macOS/Linux выводит stdout/stderr в
-                  консоль.
-                </p>
-              </div>
-            </label>
-          </div>
         </div>
       </main>
     </div>

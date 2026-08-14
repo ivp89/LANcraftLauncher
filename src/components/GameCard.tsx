@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 
-import { thumbnailUrl } from "../api/client";
 import { MediaType } from "../api/types";
 import type { Game } from "../api/types";
+import { useCachedThumbnail } from "../hooks/useCachedMedia";
 import { useGame } from "../hooks/useGames";
 import { useGameStateStore } from "../stores/gameStateStore";
 import { useSettingsStore } from "../stores/settingsStore";
@@ -25,6 +25,7 @@ export default function GameCard({ game }: Props) {
   const cover = (mediaSource?.media ?? []).find(
     (m) => m.type === MediaType.Cover,
   );
+  const coverSrc = useCachedThumbnail(cover);
   const installed = getGameInstalled(game.id);
   const downloading = downloadingGames.has(game.id);
 
@@ -40,9 +41,9 @@ export default function GameCard({ game }: Props) {
       )}
     >
       <div className="aspect-[2/3] relative bg-slate-700">
-        {cover && !imgError ? (
+        {cover && coverSrc && !imgError ? (
           <img
-            src={thumbnailUrl(cover.id)}
+            src={coverSrc}
             alt={game.title}
             onError={() => setImgError(true)}
             className="w-full h-full object-cover"

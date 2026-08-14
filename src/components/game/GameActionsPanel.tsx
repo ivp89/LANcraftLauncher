@@ -23,8 +23,7 @@ interface Props {
 const GameActionsPanel = memo(function GameActionsPanel({ gameId }: Props) {
   const { token } = useAuthStore();
   const isOnline = useConnectivityStore((s) => s.isOnline);
-  const { serverUrl, installDir, scriptDebugging, getGameInstalled, setGameInstalled, removeGameInstalled } =
-    useSettingsStore();
+  const { serverUrl, installDir, getGameInstalled, setGameInstalled, removeGameInstalled } = useSettingsStore();
   const { downloadingGames, runningGames, setGameDownloading, setGameRunning } = useGameStateStore();
   const { data: game } = useGame(gameId);
   const { data: actions = [] } = useGameActions(gameId);
@@ -71,21 +70,6 @@ const GameActionsPanel = memo(function GameActionsPanel({ gameId }: Props) {
       const version = (game.archives ?? [])[0]?.version;
       await setGameInstalled(game.id, installPath, version);
       setUpdateAvailable(false);
-      for (const scriptType of [0, 2]) {
-        try {
-          await invoke("run_game_scripts", {
-            gameId: game.id,
-            scriptType,
-            serverUrl,
-            token,
-            installPath,
-            debug: scriptDebugging,
-          });
-        } catch (e: unknown) {
-          setActionError(e instanceof Error ? e.message : String(e));
-          break;
-        }
-      }
       setInstallSuccess(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -93,7 +77,7 @@ const GameActionsPanel = memo(function GameActionsPanel({ gameId }: Props) {
     } finally {
       setGameDownloading(game.id, false);
     }
-  }, [game, token, serverUrl, installDir, scriptDebugging, setGameDownloading, setGameInstalled]);
+  }, [game, token, serverUrl, installDir, setGameDownloading, setGameInstalled]);
 
   const handleCancelInstall = useCallback(() => {
     invoke("cancel_download", { gameId }).catch(() => {});
@@ -104,14 +88,6 @@ const GameActionsPanel = memo(function GameActionsPanel({ gameId }: Props) {
     setUninstalling(true);
     setActionError("");
     try {
-      await invoke("run_game_scripts", {
-        gameId: game.id,
-        scriptType: 1,
-        serverUrl,
-        token,
-        installPath: installed.installPath,
-        debug: scriptDebugging,
-      }).catch(() => {});
       await invoke("remove_dir", { path: installed.installPath });
       await removeGameInstalled(game.id);
     } catch (e) {
@@ -119,7 +95,7 @@ const GameActionsPanel = memo(function GameActionsPanel({ gameId }: Props) {
     } finally {
       setUninstalling(false);
     }
-  }, [game, installed?.installPath, serverUrl, token, scriptDebugging, removeGameInstalled]);
+  }, [game, installed?.installPath, removeGameInstalled]);
 
   const handleDownloadSave = useCallback(async () => {
     if (!game || !token || !installed?.installPath) return;
@@ -176,7 +152,6 @@ const GameActionsPanel = memo(function GameActionsPanel({ gameId }: Props) {
           installPath: installed.installPath,
           serverUrl,
           token,
-          debug: scriptDebugging,
         });
         setGameRunning(game.id, true);
       } catch (e) {
@@ -185,7 +160,7 @@ const GameActionsPanel = memo(function GameActionsPanel({ gameId }: Props) {
         setLaunching(false);
       }
     },
-    [game, token, installed?.installPath, serverUrl, scriptDebugging, setGameRunning],
+    [game, token, installed?.installPath, serverUrl, setGameRunning],
   );
 
   if (!game) return null;

@@ -13,12 +13,10 @@ export interface InstalledGame {
 interface SettingsState {
   serverUrl: string;
   installDir: string;
-  scriptDebugging: boolean;
   installedGames: Record<string, InstalledGame>;
   localAlias: string;
   setServerUrl: (url: string) => Promise<void>;
   setInstallDir: (dir: string) => Promise<void>;
-  setScriptDebugging: (v: boolean) => Promise<void>;
   setGameInstalled: (gameId: string, installPath: string, version?: string) => Promise<void>;
   removeGameInstalled: (gameId: string) => Promise<void>;
   getGameInstalled: (gameId: string) => InstalledGame | undefined;
@@ -37,7 +35,6 @@ async function getDefaultInstallDir(): Promise<string> {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   serverUrl: "",
   installDir: "",
-  scriptDebugging: false,
   installedGames: {},
   localAlias: "",
 
@@ -51,12 +48,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await store.set("installDir", dir);
     await store.save();
     set({ installDir: dir });
-  },
-
-  setScriptDebugging: async (v: boolean) => {
-    await store.set("scriptDebugging", v);
-    await store.save();
-    set({ scriptDebugging: v });
   },
 
   removeGameInstalled: async (gameId: string) => {
@@ -90,14 +81,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   loadFromStore: async () => {
     const serverUrl = await store.get<string>("serverUrl").catch(() => null);
     const installDir = await store.get<string>("installDir").catch(() => null);
-    const scriptDebugging = await store.get<boolean>("scriptDebugging").catch(() => null);
     const installedGames = (await store.get<Record<string, InstalledGame>>("installedGames").catch(() => null)) ?? {};
     const localAlias = await store.get<string>("localAlias").catch(() => null);
 
     set({
       serverUrl: serverUrl ?? "",
       installDir: installDir ?? (await getDefaultInstallDir().catch(() => "/Games")),
-      scriptDebugging: scriptDebugging ?? false,
       installedGames,
       localAlias: localAlias ?? "",
     });

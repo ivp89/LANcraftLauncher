@@ -1,16 +1,17 @@
 import { memo } from "react";
-import { mediaUrl } from "@/api/client";
 import type { Media } from "@/api/types";
+import { useCachedMediaDownload } from "@/hooks/useCachedMedia";
 
 interface Props {
   heroMedia?: Media;
 }
 
 const GameHero = memo(function GameHero({ heroMedia }: Props) {
+  const heroSrc = useCachedMediaDownload(heroMedia);
   return (
     <div className="relative h-80 overflow-hidden">
-      {heroMedia ? (
-        <img src={mediaUrl(heroMedia.id, heroMedia.fileId)} alt="" className="h-full w-full object-cover" />
+      {heroMedia && heroSrc ? (
+        <img src={heroSrc} alt="" className="h-full w-full object-cover" />
       ) : (
         <div className="h-full w-full bg-slate-800" />
       )}

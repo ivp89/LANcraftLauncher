@@ -1,7 +1,7 @@
 import { memo } from "react";
 
-import { thumbnailUrl, mediaUrl } from "@/api/client";
 import type { Game, Media } from "@/api/types";
+import { useCachedMediaDownload, useCachedThumbnail } from "@/hooks/useCachedMedia";
 
 interface Props {
   game: Game;
@@ -10,16 +10,16 @@ interface Props {
 }
 
 const GameHeaderInfo = memo(function GameHeaderInfo({ game, cover, logo }: Props) {
+  const coverSrc = useCachedThumbnail(cover);
+  const logoSrc = useCachedMediaDownload(logo);
   return (
     <>
-      {cover && <img src={thumbnailUrl(cover.id)} alt={game.title} className="w-32 shrink-0 rounded-lg shadow-lg" />}
+      {cover && coverSrc && (
+        <img src={coverSrc} alt={game.title} className="w-32 shrink-0 rounded-lg shadow-lg" />
+      )}
       <div className="flex-1">
-        {logo ? (
-          <img
-            src={mediaUrl(logo.id, logo.fileId)}
-            alt={game.title}
-            className="mb-2 max-h-20 max-w-xs object-contain"
-          />
+        {logo && logoSrc ? (
+          <img src={logoSrc} alt={game.title} className="mb-2 max-h-20 max-w-xs object-contain" />
         ) : (
           <h1 className="text-3xl font-bold text-white">{game.title}</h1>
         )}

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 
@@ -9,8 +8,6 @@ import { getProfile, changeAlias, fetchAvatarBlob } from "../api/profile";
 import type { UserProfile } from "../api/profile";
 import { useAuthStore } from "../stores/authStore";
 import { useSettingsStore } from "../stores/settingsStore";
-
-const SCRIPT_TYPE_NAME_CHANGE = 2;
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -58,31 +55,6 @@ export default function ProfilePage() {
     try {
       await changeAlias(alias.trim());
       setProfile((p) => (p ? { ...p, alias: alias.trim() } : p));
-
-      const { installedGames, serverUrl: url, scriptDebugging } = useSettingsStore.getState();
-      const { token: tok } = useAuthStore.getState();
-      const entries = Object.entries(installedGames).filter(([, g]) => g.installed);
-      if (entries.length > 0 && tok) {
-        const results = await Promise.allSettled(
-          entries.map(([gameId, g]) =>
-            invoke("run_game_scripts", {
-              gameId,
-              scriptType: SCRIPT_TYPE_NAME_CHANGE,
-              serverUrl: url,
-              token: tok,
-              installPath: g.installPath,
-              debug: scriptDebugging,
-            }),
-          ),
-        );
-        const failed = results
-          .map((r, i) => (r.status === "rejected" ? `${entries[i][0]}: ${r.reason}` : null))
-          .filter(Boolean);
-        if (failed.length > 0) {
-          setSaveError(`Псевдоним сохранён, но скрипты не выполнились:\n${failed.join("\n")}`);
-          return;
-        }
-      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
